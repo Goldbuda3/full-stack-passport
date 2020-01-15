@@ -89,23 +89,6 @@ passport.use(new LocalStrategy(
   }
 ));
 
-/* PASSPORT FACEBOOK AUTHENTICATION */
-var passport = require('passport')
-  , FacebookStrategy = require('passport-facebook').Strategy;
-
-passport.use(new FacebookStrategy({
-    clientID: 585359305586524,
-    clientSecret: 9b0ce99de99384fe3decc52d77255eba,
-    callbackURL: "http://www.example.com/auth/facebook/callback"
-  },
-  function(accessToken, refreshToken, profile, done) {
-    User.findOrCreate(..., function(err, user) {
-      if (err) { return done(err); }
-      done(null, user);
-    });
-  }
-));
-
 router.get('/login', function (req, res) {
   res.render('articles/login');
 })
