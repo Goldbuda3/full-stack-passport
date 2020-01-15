@@ -1,8 +1,5 @@
 const express = require('express');
 const router = express.Router();
-const auth = require('./auth'),
-cookieParser = require('cookie-parser'),
-cookieSession = require('cookie-session');
 
 // const app = express();
 const session = require("express-session");
@@ -34,7 +31,6 @@ router.use(express.static(__dirname + '/public'));
 /*  PASSPORT SETUP  */
 
 const passport = require('passport');
-auth(passport);
 router.use(passport.initialize());
 router.use(passport.session());
 
@@ -123,68 +119,37 @@ router.get('/', function (req, res) {
 });
 
 /* PASSPORT GOOGLE AUTHENTICATION */
-const GoogleStrategy = require('passport-google-oauth').OAuth2Strategy;
+var GoogleStrategy = require('passport-google-oauth20').Strategy;
 
-module.exports = (passport) => {
-    passport.serializeUser((user, done) => {
-        done(null, user);
+passport.use(new GoogleStrategy({
+    clientID: GOOGLE_CLIENT_ID,
+    clientSecret: GOOGLE_CLIENT_SECRET,
+    callbackURL: "http://localhost/8080/auth/google/callback"
+  },
+  function(accessToken, refreshToken, profile, cb) {
+    User.findOrCreate({ googleId: profile.id }, function (err, user) {
+      return cb(err, user);
     });
-    passport.deserializeUser((user, done) => {
-        done(null, user);
-    });
-    passport.use(new GoogleStrategy({
-            clientID: 976212040028-hcigl64nfd0vd5u1o1o2qp2arq9qlpde.apps.googleusercontent.com,
-            clientSecret: ItHOI71SKWqzgEjSvLGusns8,
-            callbackURL: "http://localhost:8080/auth/google/callback"
-        },
-        (token, refreshToken, profile, done) => {
-            return done(null, {
-                profile: profile,
-                token: token
-            });
-        }));
-};
-
-router.use(cookieSession({
-  name: 'session',
-  keys: ['123'],
-  maxAge: 24 * 60 * 60 * 1000
-}));
-router.use(cookieParser());
-
-router.get('/', (req, res) => {
-  if (req.session.token) {
-      res.cookie('token', req.session.token);
-      res.json({
-          status: 'session cookie set'
-      });
-  } else {
-      res.cookie('token', '')
-      res.json({
-          status: 'session cookie not set'
-      });
   }
-});
+));
 
-router.get('/logout', (req, res) => {
-  req.logout();
-  req.session = null;
-  res.redirect('/');
-});
+// GET /auth/google
+//   Use passport.authenticate() as route middleware to authenticate the
+//   request.  The first step in Google authentication will involve
+//   redirecting the user to google.com.  After authorization, Google
+//   will redirect the user back to this application at /auth/google/callback
+app.get('/auth/google',
+  passport.authenticate('google', { scope: ['https://www.googleapis.com/auth/plus.login'] }));
 
-router.get('/auth/google', passport.authenticate('google', {
-  scope: ['https://www.googleapis.com/auth/userinfo.profile']
-}));
-
-router.get('/auth/google/callback',
-  passport.authenticate('google', {
-      failureRedirect: '/'
-  }),
-  (req, res) => {
-      console.log(req.user.token);
-      req.session.token = req.user.token;
-      res.redirect('/');
-  }
-);
+// GET /auth/google/callback
+//   Use passport.authenticate() as route middleware to authenticate the
+//   request.  If authentication fails, the user will be redirected back to the
+//   login page.  Otherwise, the primary route function function will be called,
+//   which, in this example, will redirect the user to the home page.
+app.get('/auth/google/callback', 
+  passport.authenticate('google', { failureRedirect: '/login' }),
+  function(req, res) {
+    res.redirect('/');
+  });
 
 module.exports = router;
