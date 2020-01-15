@@ -1,9 +1,9 @@
 const express = require('express'),
-    app = express(),
-    passport = require('passport'),
-    auth = require('./auth'),
-    cookieParser = require('cookie-parser'),
-    cookieSession = require('cookie-session');
+const app = express(),
+const passport = require('passport'),
+const auth = require('./auth'),
+const cookieParser = require('cookie-parser'),
+const cookieSession = require('cookie-session');
 
 auth(passport);
 app.use(passport.initialize());
