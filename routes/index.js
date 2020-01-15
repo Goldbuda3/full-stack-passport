@@ -1,5 +1,8 @@
 const express = require('express');
 const router = express.Router();
+const auth = require('./routes/auth'),
+const cookieParser = require('cookie-parser'),
+const cookieSession = require('cookie-session');
 
 // const app = express();
 const session = require("express-session");
@@ -31,6 +34,7 @@ router.use(express.static(__dirname + '/public'));
 /*  PASSPORT SETUP  */
 
 const passport = require('passport');
+auth(passport);
 router.use(passport.initialize());
 router.use(passport.session());
 
@@ -118,5 +122,69 @@ router.get('/', function (req, res) {
   res.render("articles/login")
 });
 
+/* PASSPORT GOOGLE AUTHENTICATION */
+const GoogleStrategy = require('passport-google-oauth').OAuth2Strategy;
+
+module.exports = (passport) => {
+    passport.serializeUser((user, done) => {
+        done(null, user);
+    });
+    passport.deserializeUser((user, done) => {
+        done(null, user);
+    });
+    passport.use(new GoogleStrategy({
+            clientID: 976212040028-hcigl64nfd0vd5u1o1o2qp2arq9qlpde.apps.googleusercontent.com,
+            clientSecret: ItHOI71SKWqzgEjSvLGusns8,
+            callbackURL: "http://localhost:8080/auth/google/callback"
+        },
+        (token, refreshToken, profile, done) => {
+            return done(null, {
+                profile: profile,
+                token: token
+            });
+        }));
+};
+
+router.use(cookieSession({
+  name: 'session',
+  keys: ['123'],
+  maxAge: 24 * 60 * 60 * 1000
+}));
+router.use(cookieParser());
+
+router.get('/', (req, res) => {
+  if (req.session.token) {
+      res.cookie('token', req.session.token);
+      res.json({
+          status: 'session cookie set'
+      });
+  } else {
+      res.cookie('token', '')
+      res.json({
+          status: 'session cookie not set'
+      });
+  }
+});
+
+router.get('/logout', (req, res) => {
+  req.logout();
+  req.session = null;
+  res.redirect('/');
+});
+
+router.get('/auth/google', passport.authenticate('google', {
+  scope: ['https://www.googleapis.com/auth/userinfo.profile']
+}));
+
+router.get('/auth/google/callback',
+  passport.authenticate('google', {
+      failureRedirect: '/'
+  }),
+  (req, res) => {
+      console.log(req.user.token);
+      req.session.token = req.user.token;
+      res.redirect('/');
+  }
+);
 
 module.exports = router;

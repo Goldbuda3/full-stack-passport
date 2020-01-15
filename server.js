@@ -1,21 +1,21 @@
 const express = require('express'),
-const app = express(),
+const router = express(),
 const passport = require('passport'),
-const auth = require('../auth'),
+const auth = require('./routes/auth'),
 const cookieParser = require('cookie-parser'),
 const cookieSession = require('cookie-session');
 
 auth(passport);
-app.use(passport.initialize());
+router.use(passport.initialize());
 
-app.use(cookieSession({
+router.use(cookieSession({
     name: 'session',
-    keys: ['SECRECT KEY'],
+    keys: ['123'],
     maxAge: 24 * 60 * 60 * 1000
 }));
-app.use(cookieParser());
+router.use(cookieParser());
 
-app.get('/', (req, res) => {
+router.get('/', (req, res) => {
     if (req.session.token) {
         res.cookie('token', req.session.token);
         res.json({
@@ -29,17 +29,17 @@ app.get('/', (req, res) => {
     }
 });
 
-app.get('/logout', (req, res) => {
+router.get('/logout', (req, res) => {
     req.logout();
     req.session = null;
     res.redirect('/');
 });
 
-app.get('/auth/google', passport.authenticate('google', {
+router.get('/auth/google', passport.authenticate('google', {
     scope: ['https://www.googleapis.com/auth/userinfo.profile']
 }));
 
-app.get('/auth/google/callback',
+router.get('/auth/google/callback',
     passport.authenticate('google', {
         failureRedirect: '/'
     }),
@@ -50,6 +50,6 @@ app.get('/auth/google/callback',
     }
 );
 
-app.listen(3000, () => {
+router.listen(3000, () => {
     console.log('Server is running on port 3000');
 });
