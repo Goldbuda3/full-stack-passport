@@ -1,7 +1,7 @@
 const express = require('express'),
 const app = express(),
 const passport = require('passport'),
-const auth = require('./auth'),
+const auth = require('../auth'),
 const cookieParser = require('cookie-parser'),
 const cookieSession = require('cookie-session');
 
