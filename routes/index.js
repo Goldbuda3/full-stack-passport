@@ -1,8 +1,8 @@
 const express = require('express');
 const router = express.Router();
-const auth = require('./routes/auth'),
-const cookieParser = require('cookie-parser'),
-const cookieSession = require('cookie-session');
+const auth = require('./auth'),
+cookieParser = require('cookie-parser'),
+cookieSession = require('cookie-session');
 
 // const app = express();
 const session = require("express-session");
