@@ -26,5 +26,7 @@ module.exports = (sequelize) => {
     body: Sequelize.TEXT
   }, { sequelize });
 
+  // associations can be defined here
+
   return Article;
 };

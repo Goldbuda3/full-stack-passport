@@ -1,11 +1,12 @@
+require('dotenv').config();
 const express = require('express');
 const router = express.Router();
 
-// const app = express();
 const session = require("express-session");
 const bodyParser = require("body-parser");
 require('dotenv').config();
 const models = require('../models');
+var user = require('../models/users.js');
 
 var pbkdf2 = require('pbkdf2');
 var salt = process.env.SALT_KEY;
@@ -18,8 +19,9 @@ function encryptionPassword(password) {
   return hash;
 }
 
+// SESSION SETUP
 router.use(session({
-  secret: "cats",
+  secret: process.env.secret,
   resave: false,
   saveUninitialized: true
 }));
@@ -28,32 +30,11 @@ router.use(bodyParser.urlencoded({ extended: false }));
 
 router.use(express.static(__dirname + '/public'));
 
-/*  PASSPORT SETUP  */
 
+/*  PASSPORT SETUP  */
 const passport = require('passport');
 router.use(passport.initialize());
 router.use(passport.session());
-
-router.get('/success', function (req, res) {
-  if (req.isAuthenticated()) {
-    res.redirect('/articles')
-  } else {
-    res.send("not authorized.");
-  }
-});
-
-router.get('/logout', function (req, res) {
-  if (req.isAuthenticated()) {
-    console.log("user logging out");
-    req.logOut();
-    res.send("user has logged out");
-  } else {
-    res.send("You don't have a session open");
-  }
-});
-
-router.get('/error', (req, res) => 
-(res.redirect('/login')));
 
 passport.serializeUser(function (users, cb) {
   cb(null, users.id);
@@ -65,12 +46,12 @@ passport.deserializeUser(function (id, cb) {
   });
 });
 
-/* PASSPORT LOCAL AUTHENTICATION */
 
+/* PASSPORT LOCAL AUTHENTICATION */
 const LocalStrategy = require('passport-local').Strategy;
 
-passport.use(new LocalStrategy(
-  function (username, password, done) {
+passport.use(new LocalStrategy({
+}, function (username, password, done) {
     models.users.findOne({
       where: {
         username: username
@@ -89,59 +70,104 @@ passport.use(new LocalStrategy(
   }
 ));
 
+//post login
+router.post('/login', passport.authenticate('local', {
+  successRedirect: '/articles',
+  failureRedirect: '/error'
+}));
+
+//render homepage -> redirect login
+router.get('/', (req, res) =>
+  (res.redirect('/login')));
+
+//render login
 router.get('/login', function (req, res) {
   res.render('articles/login');
 })
 
-router.post('/login',
-  passport.authenticate('local', { failureRedirect: '/error' }),
-  function (req, res) {
-    // res.render('articles/login');
-    res.redirect('/success');
-  });
+//render sign up
+router.get('/sign-up', function (req, res) {
+  res.render('articles/sign-up');
+})
 
-router.post("/sign-up", function (req, response) {
+//sign up credentials
+router.post("/sign-up", function (req, res) {
   models.users.create({
     username: req.body.username,
     password: encryptionPassword(req.body.password)
   })
     .then(function (users) {
-      response.redirect('/articles');
+      res.redirect('/articles');
     });
 });
 
-router.get('/sign-up', function (req, res) {
-  res.render('articles/sign-up');
-})
-
-router.get('/', function (req, res) {
-  res.render("articles/login")
+//logout method
+router.get('/logout', function (req, res) {
+  if (req.isAuthenticated()) {
+    req.logOut();
+    res.render('logout')
+  } else {
+    res.send("You don't have a session open");
+  }
 });
 
-/* PASSPORT GOOGLE AUTHENTICATION */
+//error handlers
+router.get('/success', function (req, res) {
+  if (req.isAuthenticated()) {
+    res.redirect('/articles')
+  } else {
+    res.send("not authorized.");
+  }
+});
+
+router.get('/error', function (req,res) {
+  res.render('passport-error')
+})
+
+
+/* PASSPORT GOOGLE OAUTH*/
 var GoogleStrategy = require('passport-google-oauth20').Strategy;
 
 passport.use(new GoogleStrategy({
-    clientID: "976212040028-hcigl64nfd0vd5u1o1o2qp2arq9qlpde.apps.googleusercontent.com",
-    clientSecret: "ItHOI71SKWqzgEjSvLGusns8",
-    callbackURL: "http://localhost:8080/auth/google/callback"
-  },
-  function(accessToken, refreshToken, profile, cb) {
-    User.findOrCreate({ googleId: profile.id }, function (err, user) {
-      return cb(err, user);
-    });
-  }
-));
+  clientID: process.env.clientID,
+  clientSecret: process.env.clientSecret,
+  callbackURL: "http://localhost:8080/auth/google/callback",
+},
+function(accessToken, refreshToken, profile, done) {
+  models.users.findOne({
+    where: {
+      'g_id': profile.id
+    }
+  }).then((currentUser) => {
+    if (currentUser) {
+      // console.log("welcome back " + profile.displayName);
+      done(null, currentUser);
+    } else {
+      models.users.create({
+        g_name: profile.displayName,
+        g_id: profile.id
+      }).then((newUser) => {
+        console.log("New User created: " + newUser);
+        done(null, newUser);
+      });
+    }
+  });
+}));
 
 // GET /auth/google
 router.get('/auth/google',
-  passport.authenticate('google', { scope: ['https://www.googleapis.com/auth/plus.login'] }));
+  passport.authenticate('google', {
+    scope:
+    ['https://www.googleapis.com/auth/userinfo.profile',]
+  }
+  ));
 
-// GET /auth/google/callback
-router.get('/auth/google/callback', 
-  passport.authenticate('google', { failureRedirect: '/login' }),
-  function(req, res) {
-    res.redirect('/');
-  });
+// GET /auth/google callback
+router.get('/auth/google/callback',
+  passport.authenticate('google', {
+    successRedirect: '/articles',
+    failureRedirect: '/login'
+  }));
+
 
 module.exports = router;
