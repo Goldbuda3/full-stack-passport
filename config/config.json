@@ -10,7 +10,7 @@
   "production": {
     "username": "postgres",
     "password": null,
-    "database": "test",
+    "database": "postgresql-pointy-17057",
     "host": "localhost",
     "dialect": "postgres"
   }
